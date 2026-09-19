@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Find Your Matches{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Find Your Matches</h2>
+
+  {% if error %}
+    <p class="status error">{{ error }}</p>
+  {% endif %}
+
+  <form id="match-form" action="{{ url_for('find_matches') }}" method="post" enctype="multipart/form-data">
+    <label>Upload Resume (PDF or DOCX)</label>
+    <input type="file" id="resume-input" name="resume" accept=".pdf,.docx">
+    <p class="hint">Optional — you can also just type your skills below.</p>
+
+    <button type="button" id="parse-btn" class="btn-secondary">Parse Resume</button>
+    <p class="hint" id="parse-status"></p>
+
+    <label>Your Skills</label>
+    <textarea name="skills" id="skills-field" rows="3" placeholder="e.g. python, react, sql, communication">{{ skills or "" }}</textarea>
+
+    <label>Your Location (optional)</label>
+    <input type="text" name="location" id="location-field" placeholder="e.g. Janiuay, Iloilo" value="{{ location or '' }}">
+    <p class="hint">Used to nudge nearby listings up — never changes your skill match score.</p>
+
+    <button type="submit" class="btn-primary">Find Matches</button>
+  </form>
+</section>
+
+<script>
+  // Skills/location survive leaving this page and coming back (e.g. via
+  // Post a Listing) using sessionStorage. The resume file itself can't
+  // be restored this way -- browsers never let JS re-populate a file
+  // input for security reasons, so re-uploading the resume is still
+  // needed if you navigate away before submitting.
+  (function () {
+    const skillsField = document.getElementById("skills-field");
+    const locationField = document.getElementById("location-field");
+
+    if (!skillsField.value) {
+      const saved = sessionStorage.getItem("matchForm_skills");
+      if (saved) skillsField.value = saved;
+    }
+    if (!locationField.value) {
+      const saved = sessionStorage.getItem("matchForm_location");
+      if (saved) locationField.value = saved;
+    }
+
+    skillsField.addEventListener("input", () => sessionStorage.setItem("matchForm_skills", skillsField.value));
+    locationField.addEventListener("input", () => sessionStorage.setItem("matchForm_location", locationField.value));
+  })();
+
+  document.getElementById("parse-btn").addEventListener("click", async function () {
+    const fileInput = document.getElementById("resume-input");
+    const statusEl = document.getElementById("parse-status");
+    const parseBtn = document.getElementById("parse-btn");
+
+    if (!fileInput.files.length) {
+      statusEl.textContent = "Please choose a resume file first.";
+      statusEl.style.color = "var(--danger)";
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("resume", fileInput.files[0]);
+
+    parseBtn.disabled = true;
+    statusEl.textContent = "Reading your resume…";
+    statusEl.style.color = "var(--text-dim)";
+
+    try {
+      const res = await fetch("{{ url_for('parse_resume_route') }}", {
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        statusEl.textContent = data.error || "Something went wrong parsing that resume.";
+        statusEl.style.color = "var(--danger)";
+        return;
+      }
+
+      if (data.skills) {
+        document.getElementById("skills-field").value = data.skills;
+      }
+      if (data.location) {
+        document.getElementById("location-field").value = data.location;
+      }
+      statusEl.textContent = data.note || "Resume parsed.";
+      statusEl.style.color = "var(--success)";
+    } catch (err) {
+      statusEl.textContent = "Couldn't reach the server. Please try again.";
+      statusEl.style.color = "var(--danger)";
+    } finally {
+      parseBtn.disabled = false;
+    }
+  });
+</script>
+{% endblock %}

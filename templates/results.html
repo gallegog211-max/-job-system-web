@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Your Matches{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Your Matches</h2>
+  <p class="hint">Engine used: <strong>{{ engine_used }}</strong></p>
+  {% if resume_note %}<p class="hint">{{ resume_note }}</p>{% endif %}
+  <p class="hint">Skills used: {{ skills }}{% if location %} · Location: {{ location }}{% endif %}</p>
+
+  <h3 class="section-title">🇵🇭 Philippines</h3>
+  {% if ph_matches %}
+    {% for job in ph_matches %}
+    <div class="job-card">
+      <div class="job-card-head">
+        <span class="job-title">{{ job.title }}</span>
+        <span class="job-score">{{ job.display_score }}%</span>
+      </div>
+      <p class="job-company">{{ job.company }} · {{ job.location }} · {{ job.type }}</p>
+      {% if job.match_reason %}<p class="job-reason">{{ job.match_reason }}</p>{% endif %}
+      <a href="{{ url_for('post_page', from_match=job.id) }}" class="btn-secondary small">Use This Match</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="hint">No local matches found.</p>
+  {% endif %}
+
+  <h3 class="section-title">🌍 International</h3>
+  {% if intl_matches %}
+    {% for job in intl_matches %}
+    <div class="job-card">
+      <div class="job-card-head">
+        <span class="job-title">{{ job.title }}</span>
+        <span class="job-score">{{ job.display_score }}%</span>
+      </div>
+      <p class="job-company">{{ job.company }} · {{ job.location }} · {{ job.type }}</p>
+      {% if job.match_reason %}<p class="job-reason">{{ job.match_reason }}</p>{% endif %}
+      <a href="{{ url_for('post_page', from_match=job.id) }}" class="btn-secondary small">Use This Match</a>
+    </div>
+    {% endfor %}
+  {% else %}
+    <p class="hint">No international matches found.</p>
+  {% endif %}
+
+  <a href="{{ url_for('match_page') }}" class="btn-secondary">Search Again</a>
+</section>
+{% endblock %}

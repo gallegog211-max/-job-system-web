@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block title %}Access Denied{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Access Denied</h2>
+  <p class="hint">{{ message }}</p>
+  <a href="{{ url_for('match_page') }}" class="btn-secondary">Back to Find Matches</a>
+</section>
+{% endblock %}

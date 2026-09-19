@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}AI Job Recommendation System{% endblock %}</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+  <header class="app-header">
+    <h1>AI Job Recommendation System</h1>
+    <p class="subtitle">Match your skills to the best-fit job opportunities, powered by AI.</p>
+  </header>
+
+  {% if request.endpoint not in ['login_page', 'register_page'] %}
+  <nav class="tabbar">
+    {% if session.get('role') == 'applicant' %}
+    <a href="{{ url_for('match_page') }}" class="{{ 'active' if request.endpoint in ['match_page','find_matches'] else '' }}">Find Matches</a>
+    <a href="{{ url_for('post_page') }}" class="{{ 'active' if request.endpoint in ['post_page','submit_listing'] else '' }}">Post a Listing</a>
+    <a href="{{ url_for('dashboard_page') }}" class="{{ 'active' if request.endpoint in ['dashboard_page','delete_listing_route'] else '' }}">My Dashboard{% if unread_notifications %} <span class="badge-unread">{{ unread_notifications }}</span>{% endif %}</a>
+    {% endif %}
+    {% if session.get('role') == 'admin' %}
+    <a href="{{ url_for('admin_dashboard_page') }}" class="{{ 'active' if request.endpoint == 'admin_dashboard_page' else '' }}">Admin Dashboard</a>
+    {% endif %}
+  </nav>
+  {% endif %}
+
+  <div class="auth-bar">
+    {% if session.get('user_id') %}
+      <span class="auth-hello">Signed in as <strong>{{ session.get('username') }}</strong> ({{ session.get('role') }})</span>
+      <form action="{{ url_for('logout') }}" method="post" class="auth-logout-form">
+        <button type="submit" class="link-btn">Log out</button>
+      </form>
+    {% else %}
+      <a href="{{ url_for('login_page') }}" class="{{ 'active' if request.endpoint == 'login_page' else '' }}">Log in</a>
+      <a href="{{ url_for('register_page') }}" class="{{ 'active' if request.endpoint == 'register_page' else '' }}">Register (Applicant)</a>
+    {% endif %}
+  </div>
+
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

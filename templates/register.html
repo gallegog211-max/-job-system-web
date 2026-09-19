@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% block title %}Register{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Create Your Applicant Account</h2>
+  <p class="hint">This is for applicants who want to post and manage job listings. Admin accounts are created separately and aren't self-serve.</p>
+
+  {% if error %}
+    <p class="status error">{{ error }}</p>
+  {% endif %}
+
+  <form action="{{ url_for('register_page') }}" method="post">
+    <label>Username</label>
+    <input type="text" name="username" value="{{ username or '' }}" required autofocus>
+
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="new-password" minlength="6" required>
+    <p class="hint">At least 6 characters.</p>
+
+    <label>Confirm Password</label>
+    <input type="password" name="confirm" autocomplete="new-password" minlength="6" required>
+
+    <button type="submit" class="btn-primary">Create Account</button>
+  </form>
+
+  <p class="hint">Already have an account? <a href="{{ url_for('login_page') }}">Log in</a>.</p>
+</section>
+{% endblock %}

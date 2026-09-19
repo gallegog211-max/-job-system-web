@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Log In{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Log In</h2>
+
+  {% if error %}
+    <p class="status error">{{ error }}</p>
+  {% endif %}
+
+  <form action="{{ url_for('login_page') }}" method="post">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+
+    <label>Username</label>
+    <input type="text" name="username" value="{{ username or '' }}" required autofocus>
+
+    <label>Password</label>
+    <input type="password" name="password" autocomplete="current-password" required>
+
+    <button type="submit" class="btn-primary">Log In</button>
+  </form>
+
+  <p class="hint">New applicant? <a href="{{ url_for('register_page') }}">Create an account</a>.</p>
+</section>
+{% endblock %}

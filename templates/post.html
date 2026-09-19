@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Post a Listing{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>
+    {% if is_template %}New Listing (auto-filled from your match)
+    {% elif listing %}Editing: {{ listing.title }}
+    {% else %}Post a Listing (Applicant)
+    {% endif %}
+  </h2>
+
+  {% if is_template %}
+    <p class="hint">Filled in automatically from the match you chose on the results page — review and edit anything before submitting.</p>
+  {% endif %}
+
+  {% if error %}
+    <p class="status error">{{ error }}</p>
+  {% endif %}
+
+  <form action="{{ url_for('submit_listing') }}" method="post">
+    {% if listing and not is_template %}<input type="hidden" name="listing_id" value="{{ listing.id }}">{% endif %}
+
+    <label>Job Title</label>
+    <input type="text" name="title" value="{{ listing.title if listing else '' }}" required>
+
+    <label>Company</label>
+    <input type="text" name="company" value="{{ listing.company if listing else '' }}" required>
+
+    <label>Job Type</label>
+    <select name="type">
+      {% for t in job_types %}
+      <option value="{{ t }}" {% if listing and listing.type == t %}selected{% endif %}>{{ t }}</option>
+      {% endfor %}
+    </select>
+
+    <label>Location</label>
+    <input type="text" name="location" value="{{ listing.location if listing else '' }}" required>
+    <p class="hint">Add "International" for non-PH postings.</p>
+
+    <label>Required Skills</label>
+    <textarea name="skills" rows="3" required>{{ listing.skills if listing else '' }}</textarea>
+
+    <button type="submit" class="btn-primary">{% if listing and not is_template %}Save Changes{% else %}Submit Listing{% endif %}</button>
+    {% if listing and not is_template %}<a href="{{ url_for('post_page') }}" class="btn-secondary">Cancel Edit</a>{% endif %}
+  </form>
+</section>
+{% endblock %}

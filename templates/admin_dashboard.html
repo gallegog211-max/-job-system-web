@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<section class="panel">
+  <h2>Admin Dashboard</h2>
+  <p class="hint">{{ listings|length }} listing(s) posted by applicants.</p>
+
+  {% if error %}
+    <p class="status error">{{ error }}</p>
+  {% endif %}
+
+  {% for l in listings %}
+  <div class="job-card">
+    <div class="job-card-head">
+      <span class="job-title">{{ l.title }}</span>
+      <span class="job-score">{{ l.type }}</span>
+    </div>
+    <p class="job-company">{{ l.company }} · {{ l.location }}</p>
+    <p class="hint">Posted {{ l.posted_at }}{% if l.updated_at %} · Edited {{ l.updated_at }}{% endif %}{% if l.posted_by_username %} · by {{ l.posted_by_username }}{% endif %}</p>
+    <p class="hint">
+      {% if l.status == 'approved' and l.start_date %}<span class="badge-readonly">Approved / Hired · Starts {{ l.start_date }}</span>{% else %}<span class="badge-readonly">Pending</span>{% endif %}
+    </p>
+    <div class="row-actions">
+      {% if not (l.status == 'approved' and l.start_date) %}
+      <form action="{{ url_for('approve_listing_route', listing_id=l.id) }}" method="post" class="approve-form">
+        <input type="date" name="start_date" class="start-date-input" required>
+        <button type="submit" class="btn-primary small">Approve (Hired)</button>
+      </form>
+      {% endif %}
+      <form action="{{ url_for('admin_delete_listing_route', listing_id=l.id) }}" method="post"
+            class="js-confirm"
+            data-confirm="Delete {{ l.title }}?">
+        <button type="submit" class="btn-danger small">Delete</button>
+      </form>
+    </div>
+  </div>
+  {% else %}
+  <p class="hint">No listings yet.</p>
+  {% endfor %}
+</section>
+
+<script>
+// Approving needs a start date -- confirm shows the applicant/date so
+// the admin can double check before it's sent, and today is the
+// earliest selectable date (can't hire someone starting in the past).
+var today = new Date().toISOString().split("T")[0];
+document.querySelectorAll(".start-date-input").forEach(function (input) {
+  input.min = today;
+});
+
+document.querySelectorAll(".approve-form").forEach(function (form) {
+  form.addEventListener("submit", function (e) {
+    var dateVal = form.querySelector(".start-date-input").value;
+    var title = form.closest(".job-card").querySelector(".job-title").textContent;
+    if (!confirm("Approve \"" + title + "\" and notify the applicant their start date is " + dateVal + "?")) {
+      e.preventDefault();
+    }
+  });
+});
+
+document.addEventListener('submit', function (e) {
+  var form = e.target.closest('.js-confirm');
+  if (form && !confirm(form.dataset.confirm)) {
+    e.preventDefault();
+  }
+});
+</script>
+{% endblock %}

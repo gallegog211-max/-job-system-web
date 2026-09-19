@@ -1,0 +1,245 @@
+:root {
+  --bg: #0d0715;
+  --panel: #160c25;
+  --border: #3b1e6b;
+  --neon: #b967ff;
+  --neon-soft: #7c3aed;
+  --pink: #ff4ecd;
+  --text: #f1e9ff;
+  --text-dim: #b6a6d9;
+  --success: #4dffb4;
+  --warn: #ffd166;
+  --danger: #ff5c8a;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+  padding-bottom: 40px;
+}
+
+.app-header {
+  text-align: center;
+  padding: 20px 16px 10px;
+}
+.app-header h1 {
+  color: var(--neon);
+  font-size: 1.4rem;
+  margin: 0;
+}
+.subtitle {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+
+.tabbar {
+  display: flex;
+  overflow-x: auto;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.tabbar a {
+  flex: 1 0 auto;
+  text-align: center;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--text-dim);
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+.tabbar a.active {
+  background: var(--neon-soft);
+  color: var(--text);
+}
+.badge-unread {
+  display: inline-block;
+  min-width: 18px;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--pink);
+  color: #1a0a12;
+  font-size: 0.72rem;
+  font-weight: 800;
+  margin-left: 4px;
+  vertical-align: middle;
+}
+.notif-unread {
+  color: var(--success);
+  font-weight: 700;
+}
+
+.content {
+  padding: 16px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px;
+}
+.panel h2 {
+  color: var(--pink);
+  margin-top: 0;
+  font-size: 1.15rem;
+}
+
+label {
+  display: block;
+  margin: 14px 0 4px;
+  font-size: 0.9rem;
+  color: var(--text-dim);
+}
+
+input[type="text"], input[type="password"], input[type="file"], textarea, select {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #0f0a1c;
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+/* Edge/Chrome layer their own native styling on top of password fields
+   (autofill suggestions, "Verify it's you"/Windows Hello, strong-password
+   generator) which can silently override background-color. !important
+   plus the classic autofill box-shadow trick forces our dark theme back. */
+input[type="password"] {
+  background-color: #0f0a1c !important;
+  color: var(--text) !important;
+  width: 100% !important;
+  -webkit-text-fill-color: var(--text);
+}
+input[type="password"]:-webkit-autofill,
+input[type="password"]:-webkit-autofill:hover,
+input[type="password"]:-webkit-autofill:focus,
+input[type="password"]:autofill {
+  -webkit-box-shadow: 0 0 0 1000px #0f0a1c inset !important;
+  box-shadow: 0 0 0 1000px #0f0a1c inset !important;
+  -webkit-text-fill-color: var(--text) !important;
+  caret-color: var(--text);
+}
+
+.hint {
+  color: var(--text-dim);
+  font-size: 0.8rem;
+  margin: 4px 0 0;
+}
+
+.status.error {
+  color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-primary, .btn-secondary, .btn-danger {
+  display: inline-block;
+  margin-top: 16px;
+  padding: 12px 18px;
+  border-radius: 8px;
+  border: none;
+  font-weight: 700;
+  font-size: 0.95rem;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+  width: 100%;
+}
+.btn-primary {
+  background: var(--neon-soft);
+  color: white;
+}
+.btn-primary:active { background: var(--neon); }
+
+.btn-secondary {
+  background: transparent;
+  color: var(--text-dim);
+  border: 1px solid var(--border);
+  margin-top: 8px;
+}
+
+.btn-danger {
+  background: #7a1f3d;
+  color: white;
+}
+
+.small {
+  width: auto;
+  padding: 8px 12px;
+  font-size: 0.8rem;
+  margin-top: 0;
+}
+
+.section-title {
+  color: var(--neon);
+  margin: 22px 0 10px;
+  font-size: 1rem;
+}
+
+.job-card {
+  background: #130a22;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+  margin-bottom: 10px;
+}
+.job-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 8px;
+}
+.job-title {
+  font-weight: 700;
+  color: var(--text);
+}
+.job-score {
+  color: var(--success);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.job-company {
+  color: var(--text-dim);
+  font-size: 0.85rem;
+  margin: 4px 0 0;
+}
+.job-reason {
+  color: var(--text-dim);
+  font-size: 0.82rem;
+  margin: 6px 0 0;
+  font-style: italic;
+}
+
+.row-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+  flex-wrap: wrap;
+}
+.row-actions form { margin: 0; flex: 1; }
+.row-actions form button { width: 100%; }
+
+.approve-form {
+  display: flex;
+  gap: 6px;
+  flex: 2 1 220px;
+}
+.start-date-input {
+  flex: 1;
+  min-width: 0;
+  padding: 8px;
+  font-size: 0.85rem;
+}
+.approve-form button { flex: 1; }
