@@ -69,6 +69,15 @@ def init_db() -> None:
         conn.execute("ALTER TABLE listings ADD COLUMN start_date TEXT")
         conn.commit()
 
+    # Migration: security question/answer for self-serve password reset.
+    existing_user_cols = [row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()]
+    if "security_question" not in existing_user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN security_question TEXT")
+        conn.commit()
+    if "security_answer_hash" not in existing_user_cols:
+        conn.execute("ALTER TABLE users ADD COLUMN security_answer_hash TEXT")
+        conn.commit()
+
     conn.execute(
         """
         CREATE TABLE IF NOT EXISTS notifications (
@@ -294,16 +303,43 @@ def get_user_by_id(user_id: int) -> dict | None:
     return dict(row) if row else None
 
 
-def create_user(username: str, password_hash: str, role: str) -> dict:
+def create_user(
+    username: str,
+    password_hash: str,
+    role: str,
+    security_question: str | None = None,
+    security_answer_hash: str | None = None,
+) -> dict:
     """Raises sqlite3.IntegrityError if the username is already taken
     (callers should check get_user_by_username first for a friendly
-    error message, but this is the hard backstop)."""
+    error message, but this is the hard backstop). security_question /
+    security_answer_hash power the self-serve "Forgot password" flow
+    (see update_user_password below) -- optional so admin creation
+    still works without them."""
     conn = get_connection()
     cursor = conn.execute(
-        "INSERT INTO users (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)",
-        (username, password_hash, role, datetime.now().strftime("%b %d, %Y %I:%M %p")),
+        "INSERT INTO users (username, password_hash, role, created_at, "
+        "security_question, security_answer_hash) VALUES (?, ?, ?, ?, ?, ?)",
+        (
+            username,
+            password_hash,
+            role,
+            datetime.now().strftime("%b %d, %Y %I:%M %p"),
+            security_question,
+            security_answer_hash,
+        ),
     )
     conn.commit()
     new_id = cursor.lastrowid
     conn.close()
     return get_user_by_id(new_id)
+
+
+def update_user_password(user_id: int, new_password_hash: str) -> None:
+    """Used by the 'Forgot password' flow once the security answer has
+    been verified, and could later be reused for a 'change password'
+    settings page."""
+    conn = get_connection()
+    conn.execute("UPDATE users SET password_hash = ? WHERE id = ?", (new_password_hash, user_id))
+    conn.commit()
+    conn.close()
