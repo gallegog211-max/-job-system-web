@@ -130,8 +130,10 @@ def register_page():
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "")
     confirm = request.form.get("confirm", "")
+    security_question = request.form.get("security_question", "").strip()
+    security_answer = request.form.get("security_answer", "").strip()
 
-    if not username or not password:
+    if not username or not password or not security_question or not security_answer:
         return render_template("register.html", error="Please fill in all fields.", username=username)
     if password != confirm:
         return render_template("register.html", error="Passwords do not match.", username=username)
@@ -140,7 +142,16 @@ def register_page():
     if database.get_user_by_username(username):
         return render_template("register.html", error="That username is already taken.", username=username)
 
-    user = database.create_user(username, generate_password_hash(password), role="applicant")
+    # Answer is normalized (lowercased/stripped) before hashing so a
+    # later reset attempt isn't rejected over capitalization/spacing.
+    answer_hash = generate_password_hash(security_answer.lower())
+    user = database.create_user(
+        username,
+        generate_password_hash(password),
+        role="applicant",
+        security_question=security_question,
+        security_answer_hash=answer_hash,
+    )
     session["user_id"] = user["id"]
     session["username"] = user["username"]
     session["role"] = user["role"]
@@ -176,14 +187,85 @@ def logout():
 
 
 # ---------------------------------------------------------------------
+# Forgot password -- self-serve reset using the security question the
+# applicant set at registration. Two steps on one route: first look up
+# the username and show their question, then verify the answer and
+# accept a new password. (Usernames aren't secret -- there's no
+# separate "forgot username" recovery, since forgetting your own
+# chosen name isn't something a security-question flow can verify.)
+# ---------------------------------------------------------------------
+@app.route("/forgot-password", methods=["GET", "POST"])
+def forgot_password_page():
+    if request.method == "GET":
+        return render_template("forgot_password.html")
+
+    stage = request.form.get("stage", "lookup")
+    username = request.form.get("username", "").strip()
+
+    if stage == "lookup":
+        user = database.get_user_by_username(username)
+        if not user or not user.get("security_question"):
+            return render_template(
+                "forgot_password.html",
+                error="No account found with that username.",
+                username=username,
+            )
+        return render_template(
+            "forgot_password.html",
+            username=username,
+            security_question=user["security_question"],
+        )
+
+    # stage == "reset"
+    answer = request.form.get("security_answer", "").strip()
+    new_password = request.form.get("new_password", "")
+    confirm = request.form.get("confirm", "")
+
+    user = database.get_user_by_username(username)
+    if not user or not user.get("security_answer_hash"):
+        return render_template("forgot_password.html", error="No account found with that username.")
+
+    if not check_password_hash(user["security_answer_hash"], answer.lower()):
+        return render_template(
+            "forgot_password.html",
+            username=username,
+            security_question=user["security_question"],
+            error="That answer doesn't match what we have on file.",
+        )
+    if new_password != confirm:
+        return render_template(
+            "forgot_password.html",
+            username=username,
+            security_question=user["security_question"],
+            error="Passwords do not match.",
+        )
+    if len(new_password) < 6:
+        return render_template(
+            "forgot_password.html",
+            username=username,
+            security_question=user["security_question"],
+            error="Password must be at least 6 characters.",
+        )
+
+    database.update_user_password(user["id"], generate_password_hash(new_password))
+    return render_template("login.html", success="Password reset. You can log in now.", username=username)
+
+
+# ---------------------------------------------------------------------
 # Tab 1: Find Your Matches -- now requires being logged in (as either
 # applicant-only. Admins manage listings from /admin instead; they
 # don't upload resumes or search for jobs, so this whole flow (and its
 # nav tab) is hidden from them.
 # ---------------------------------------------------------------------
 @app.route("/", methods=["GET"])
-@login_required(role="applicant")
+@login_required()
 def match_page():
+    # An admin has no "Find Matches" flow of their own -- send them to
+    # their dashboard instead of a 403, since landing on "/" (e.g. via
+    # a bookmark or the site's root URL) is a normal thing to do, not
+    # an access violation.
+    if session.get("role") == "admin":
+        return redirect(url_for("admin_dashboard_page"))
     return render_template("match.html", job_types=JOB_TYPES)
 
 
