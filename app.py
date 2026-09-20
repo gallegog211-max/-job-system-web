@@ -405,10 +405,10 @@ def submit_listing():
         existing = database.get_listing(int(editing_id))
         if not existing or existing.get("posted_by") != session["user_id"]:
             abort(403)
-        data["updated_at"] = datetime.now().strftime("%b %d, %Y %I:%M %p")
+        data["updated_at"] = datetime.now().strftime("%b %d, %Y %I:%M %p")   # ← bug
         database.update_listing(int(editing_id), data)
     else:
-        data["posted_at"] = datetime.now().strftime("%b %d, %Y %I:%M %p")
+        data["posted_at"] = datetime.now().strftime("%b %d, %Y %I:%M %p")    # ← bug
         data["posted_by"] = session["user_id"]
         database.insert_listing(data)
 
