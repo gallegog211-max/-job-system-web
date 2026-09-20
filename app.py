@@ -385,8 +385,6 @@ def post_page():
 @app.route("/post", methods=["POST"])
 @login_required(role="applicant")
 def submit_listing():
-    from datetime import datetime
-
     editing_id = request.form.get("listing_id")
     data = {
         "title": request.form.get("title", "").strip(),
@@ -405,15 +403,14 @@ def submit_listing():
         existing = database.get_listing(int(editing_id))
         if not existing or existing.get("posted_by") != session["user_id"]:
             abort(403)
-        data["updated_at"] = datetime.now().strftime("%b %d, %Y %I:%M %p")   # ← bug
+        data["updated_at"] = database.ph_now_str()
         database.update_listing(int(editing_id), data)
     else:
-        data["posted_at"] = datetime.now().strftime("%b %d, %Y %I:%M %p")    # ← bug
+        data["posted_at"] = database.ph_now_str()
         data["posted_by"] = session["user_id"]
         database.insert_listing(data)
 
     return redirect(url_for("dashboard_page"))
-
 
 # ---------------------------------------------------------------------
 # Tab 3: Applicant Dashboard -- each applicant only sees/manages their
