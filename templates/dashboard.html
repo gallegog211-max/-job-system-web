@@ -4,6 +4,20 @@
 <section class="panel">
   <h2>Applicant Dashboard</h2>
 
+  {% if email_msg %}<p class="status error">{{ email_msg }}</p>{% endif %}
+  {% if not user_email %}
+  <div class="job-card">
+    <p class="job-title">Add your email</p>
+    <p class="hint">Add your Gmail to receive an email when you're approved/hired.</p>
+    <form action="{{ url_for('update_email_route') }}" method="post">
+      <input type="email" name="email" placeholder="you@gmail.com" required>
+      <button type="submit" class="btn-primary">Save Email</button>
+    </form>
+  </div>
+  {% else %}
+  <p class="hint">Hire notices go to: {{ user_email }}</p>
+  {% endif %}
+
   {% if notifications %}
   <div class="job-card">
     <p class="job-title">Notifications</p>
