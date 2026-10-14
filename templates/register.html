@@ -13,6 +13,10 @@
     <label>Username</label>
     <input type="text" name="username" value="{{ username or '' }}" required autofocus>
 
+    <label>Email (Gmail)</label>
+    <input type="email" name="email" value="{{ email or '' }}" placeholder="you@gmail.com" required>
+    <p class="hint">We'll email you here when the admin approves (hires) you.</p>
+
     <label>Password</label>
     <div class="password-field">
       <input type="password" name="password" id="reg-password" autocomplete="new-password" minlength="6" required>
