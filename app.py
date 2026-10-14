@@ -7,7 +7,7 @@ This replaces the Tkinter desktop window with Flask routes + HTML
 templates, so it can be opened from any phone or desktop browser
 once deployed. Nothing about the underlying logic changes:
 
-  - database.py        -> same SQLite storage layer (unchanged)
+  - database.py        -> storage layer (Neon Postgres via DATABASE_URL)
   - gemini_matcher.py   -> same Gemini AI engine (unchanged)
   - matcher.py          -> same TF-IDF fallback engine (unchanged)
   - region_utils.py     -> same PH/international grouping (unchanged)
@@ -18,27 +18,30 @@ Run locally:
     python app.py
     -> open http://127.0.0.1:5000 on your phone (same Wi-Fi) or PC
 
-Deploy for real mobile access: see README_DEPLOY.md
+Deploy on Render: see README_DEPLOY.md
 """
 
 import os
+import re
 from functools import wraps
+
+# Load .env FIRST, before importing database.py, because database.py
+# reads DATABASE_URL. The explicit path makes it find the .env that sits
+# next to this file no matter which folder you launch Python from.
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
 
 from flask import Flask, abort, jsonify, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 from werkzeug.utils import secure_filename
 
 import database
+from emailer import send_hired_email
 from gemini_matcher import GeminiUnavailableError, gemini_extract_resume_profile, gemini_rank_listings
 from matcher import rank_listings
 from region_utils import split_and_rank_by_region
 from resume_parser import build_skill_vocabulary, extract_resume_text, find_location_in_text, find_skills_in_text
-
-try:
-    from dotenv import load_dotenv
-    load_dotenv()
-except ImportError:
-    pass
 
 app = Flask(__name__)
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB resume upload limit
@@ -49,9 +52,16 @@ app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB resume upload limit
 # the fallback here is only for local testing.
 app.secret_key = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
+# Session cookie hardening. Secure flag only on Render (HTTPS), so local
+# http://127.0.0.1 testing still works.
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = os.environ.get("RENDER") is not None
+
 database.init_db()
 
 JOB_TYPES = ["Full-time", "Part-time", "Internship"]
+EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
 @app.context_processor
@@ -128,15 +138,20 @@ def register_page():
         return render_template("register.html")
 
     username = request.form.get("username", "").strip()
+    email = request.form.get("email", "").strip()
     password = request.form.get("password", "")
     confirm = request.form.get("confirm", "")
     security_question = request.form.get("security_question", "").strip()
     security_answer = request.form.get("security_answer", "").strip()
 
-    if not username or not password or not security_question or not security_answer:
+    if not username or not email or not password or not security_question or not security_answer:
         return render_template("register.html", error="Please fill in all fields.", username=username)
+    if not EMAIL_RE.match(email):
+        return render_template("register.html", error="Please enter a valid email address.", username=username, email=email)
+    if database.get_user_by_email(email):
+        return render_template("register.html", error="That email is already registered.", username=username, email=email)
     if password != confirm:
-        return render_template("register.html", error="Passwords do not match.", username=username)
+        return render_template("register.html", error="Passwords do not match.", username=username, email=email)
     if len(password) < 6:
         return render_template("register.html", error="Password must be at least 6 characters.", username=username)
     if database.get_user_by_username(username):
@@ -151,6 +166,7 @@ def register_page():
         role="applicant",
         security_question=security_question,
         security_answer_hash=answer_hash,
+        email=email,
     )
     session["user_id"] = user["id"]
     session["username"] = user["username"]
@@ -252,7 +268,7 @@ def forgot_password_page():
 
 
 # ---------------------------------------------------------------------
-# Tab 1: Find Your Matches -- now requires being logged in (as either
+# Tab 1: Find Your Matches -- requires being logged in, and is
 # applicant-only. Admins manage listings from /admin instead; they
 # don't upload resumes or search for jobs, so this whole flow (and its
 # nav tab) is hidden from them.
@@ -412,6 +428,7 @@ def submit_listing():
 
     return redirect(url_for("dashboard_page"))
 
+
 # ---------------------------------------------------------------------
 # Tab 3: Applicant Dashboard -- each applicant only sees/manages their
 # own listings, based on who's logged in in *this* browser.
@@ -422,7 +439,23 @@ def dashboard_page():
     listings = database.get_listings_by_user(session["user_id"])
     notifications = database.get_notifications_by_user(session["user_id"])
     database.mark_notifications_read(session["user_id"])
-    return render_template("dashboard.html", listings=listings, notifications=notifications)
+    user = database.get_user_by_id(session["user_id"])
+    return render_template("dashboard.html", listings=listings, notifications=notifications,
+                           user_email=(user or {}).get("email"),
+                           email_msg=request.args.get("email_msg"))
+
+
+@app.route("/dashboard/email", methods=["POST"])
+@login_required(role="applicant")
+def update_email_route():
+    email = request.form.get("email", "").strip()
+    if not EMAIL_RE.match(email):
+        return redirect(url_for("dashboard_page", email_msg="Please enter a valid email address."))
+    other = database.get_user_by_email(email)
+    if other and other["id"] != session["user_id"]:
+        return redirect(url_for("dashboard_page", email_msg="That email is already registered."))
+    database.update_user_email(session["user_id"], email)
+    return redirect(url_for("dashboard_page", email_msg="Email saved. You'll get hire notices there."))
 
 
 @app.route("/dashboard/delete/<int:listing_id>", methods=["POST"])
@@ -479,6 +512,13 @@ def approve_listing_route(listing_id):
             f"\"{listing['title']}\" at {listing['company']}. "
             f"Your start date is {start_date_display}.",
         )
+        applicant = database.get_user_by_id(listing["posted_by"])
+        if applicant and applicant.get("email"):
+            login_url = os.environ.get("APP_URL", request.url_root).rstrip("/") + url_for("login_page")
+            send_hired_email(
+                applicant["email"], applicant["username"], listing["title"],
+                listing["company"], start_date_display, login_url,
+            )
     return redirect(url_for("admin_dashboard_page"))
 
 
