@@ -2,6 +2,14 @@ import os
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
+# Load .env FIRST, before DATABASE_URL is read below. Without this,
+# os.environ.get("DATABASE_URL") runs at import time while the value is
+# still empty. The explicit path finds the .env next to this file no
+# matter which folder you launch Python from.
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+
 import psycopg2
 import psycopg2.extras
 from werkzeug.security import generate_password_hash
@@ -102,6 +110,7 @@ def init_db() -> None:
     _exec(conn, "ALTER TABLE listings ADD COLUMN IF NOT EXISTS start_date TEXT")
     _exec(conn, "ALTER TABLE users ADD COLUMN IF NOT EXISTS security_question TEXT")
     _exec(conn, "ALTER TABLE users ADD COLUMN IF NOT EXISTS security_answer_hash TEXT")
+    _exec(conn, "ALTER TABLE users ADD COLUMN IF NOT EXISTS email TEXT")
     _exec(conn, "ALTER TABLE notifications ADD COLUMN IF NOT EXISTS is_read INTEGER NOT NULL DEFAULT 0")
     conn.commit()
 
@@ -326,6 +335,7 @@ def create_user(
     role: str,
     security_question: str | None = None,
     security_answer_hash: str | None = None,
+    email: str | None = None,
 ) -> dict:
     """Raises psycopg2.errors.UniqueViolation if the username is already
     taken (callers should check get_user_by_username first for a
@@ -337,7 +347,7 @@ def create_user(
     cursor = _exec(
         conn,
         "INSERT INTO users (username, password_hash, role, created_at, "
-        "security_question, security_answer_hash) VALUES (%s, %s, %s, %s, %s, %s) RETURNING id",
+        "security_question, security_answer_hash, email) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING id",
         (
             username,
             password_hash,
@@ -345,6 +355,7 @@ def create_user(
             ph_now_str(),
             security_question,
             security_answer_hash,
+            email,
         ),
     )
     new_id = cursor.fetchone()["id"]
@@ -359,5 +370,23 @@ def update_user_password(user_id: int, new_password_hash: str) -> None:
     settings page."""
     conn = get_connection()
     _exec(conn, "UPDATE users SET password_hash = %s WHERE id = %s", (new_password_hash, user_id))
+    conn.commit()
+    conn.close()
+
+
+def get_user_by_email(email: str) -> dict | None:
+    conn = get_connection()
+    row = _exec(
+        conn, "SELECT * FROM users WHERE LOWER(email) = LOWER(%s)", (email,)
+    ).fetchone()
+    conn.close()
+    return dict(row) if row else None
+
+
+def update_user_email(user_id: int, email: str) -> None:
+    """Lets older accounts (created before emails were collected) add
+    one from the Applicant Dashboard so they can receive hire emails."""
+    conn = get_connection()
+    _exec(conn, "UPDATE users SET email = %s WHERE id = %s", (email, user_id))
     conn.commit()
     conn.close()
