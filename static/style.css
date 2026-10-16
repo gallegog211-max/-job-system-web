@@ -243,3 +243,28 @@ input[type="password"]:autofill {
   font-size: 0.85rem;
 }
 .approve-form button { flex: 1; }
+
+.auth-bar {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
+  font-size: 0.85rem;
+  color: var(--text-dim);
+}
+.auth-bar a { color: var(--neon); text-decoration: none; font-weight: 600; }
+.auth-bar a.active { color: var(--pink); }
+.auth-logout-form { margin: 0; }
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--neon);
+  font-weight: 600;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0;
+}
+.panel a { color: var(--neon); }
+.badge-readonly { color: var(--success); font-weight: 700; }
