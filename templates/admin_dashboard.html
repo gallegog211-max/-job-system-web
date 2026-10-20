@@ -23,7 +23,9 @@
     <div class="row-actions">
       {% if not (l.status == 'approved' and l.start_date) %}
       <form action="{{ url_for('approve_listing_route', listing_id=l.id) }}" method="post" class="approve-form">
+        <label class="start-label">Start date</label>
         <input type="date" name="start_date" class="start-date-input" required>
+        <p class="date-preview">No date selected yet</p>
         <button type="submit" class="btn-primary small">Approve (Hired)</button>
       </form>
       {% endif %}
@@ -40,19 +42,42 @@
 </section>
 
 <script>
-// Approving needs a start date -- confirm shows the applicant/date so
-// the admin can double check before it's sent, and today is the
-// earliest selectable date (can't hire someone starting in the past).
-var today = new Date().toISOString().split("T")[0];
-document.querySelectorAll(".start-date-input").forEach(function (input) {
-  input.min = today;
-});
+// Start date picker: today (local time) is the earliest selectable date,
+// and the chosen date is shown in plain words under the box so it is
+// easy to read on a phone, e.g. "Thursday, November 26, 2026".
+function pad(n) { return String(n).padStart(2, "0"); }
+var now = new Date();
+var today = now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate());
+
+function readableDate(value) {
+  if (!value) return "";
+  var parts = value.split("-");
+  var d = new Date(parts[0], parts[1] - 1, parts[2]);
+  return d.toLocaleDateString("en-US", {
+    weekday: "long", year: "numeric", month: "long", day: "numeric"
+  });
+}
 
 document.querySelectorAll(".approve-form").forEach(function (form) {
+  var input = form.querySelector(".start-date-input");
+  var preview = form.querySelector(".date-preview");
+  input.min = today;
+
+  function update() {
+    if (input.value) {
+      preview.textContent = "Start date: " + readableDate(input.value);
+      preview.classList.add("chosen");
+    } else {
+      preview.textContent = "No date selected yet";
+      preview.classList.remove("chosen");
+    }
+  }
+  input.addEventListener("input", update);
+  input.addEventListener("change", update);
+
   form.addEventListener("submit", function (e) {
-    var dateVal = form.querySelector(".start-date-input").value;
     var title = form.closest(".job-card").querySelector(".job-title").textContent;
-    if (!confirm("Approve \"" + title + "\" and notify the applicant their start date is " + dateVal + "?")) {
+    if (!confirm("Approve \"" + title + "\" and notify the applicant their start date is " + readableDate(input.value) + "?")) {
       e.preventDefault();
     }
   });
