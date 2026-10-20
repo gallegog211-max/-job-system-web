@@ -41,6 +41,30 @@
   {% endfor %}
 </section>
 
+<style>
+  /* Self-contained so the date picker works even if style.css is cached. */
+  .job-card .approve-form {
+    display: flex; flex-direction: column; gap: 6px;
+    flex: 1 1 100%; width: 100%; margin: 0;
+  }
+  .job-card .approve-form .start-label {
+    display: block; margin: 0; font-size: 0.8rem; font-weight: 600; color: var(--text-dim);
+  }
+  .job-card .approve-form .start-date-input {
+    display: block; flex: none; width: 100%; min-width: 0; height: auto;
+    padding: 12px; font-size: 1rem; cursor: pointer; border-radius: 8px;
+    border: 1px solid var(--border); background-color: #0f0a1c; color: var(--text);
+    font-family: inherit; color-scheme: dark;
+  }
+  .job-card .approve-form .start-date-input:focus { outline: 2px solid var(--neon); }
+  .job-card .approve-form .date-preview {
+    margin: 0; font-size: 0.85rem; color: var(--text-dim);
+  }
+  .job-card .approve-form .date-preview.chosen { color: var(--success); font-weight: 700; }
+  .job-card .approve-form button { flex: none; width: 100%; margin-top: 4px; padding: 12px; }
+  .job-card .row-actions form.js-confirm { flex: 1 1 100%; }
+</style>
+
 <script>
 // Start date picker: today (local time) is the earliest selectable date,
 // and the chosen date is shown in plain words under the box so it is
@@ -72,6 +96,11 @@ document.querySelectorAll(".approve-form").forEach(function (form) {
       preview.classList.remove("chosen");
     }
   }
+  // Clicking anywhere on the box opens the calendar (desktop browsers
+  // otherwise only open it from the tiny calendar icon).
+  input.addEventListener("click", function () {
+    if (input.showPicker) { try { input.showPicker(); } catch (err) {} }
+  });
   input.addEventListener("input", update);
   input.addEventListener("change", update);
 
